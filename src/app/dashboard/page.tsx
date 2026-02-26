@@ -175,10 +175,20 @@ export default function DashboardPage() {
                                     </p>
                                 </div>
                             </>
+                        ) : stats.waiting > 0 ? (
+                            <div className="text-center space-y-4">
+                                <div className="text-6xl font-black text-amber-500 animate-pulse">
+                                    {queues.find(q => q.status === 'waiting')?.queue_number}
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-xl font-bold">{queues.find(q => q.status === 'waiting')?.customer_name}</p>
+                                    <p className="text-muted-foreground text-sm">Siap dipanggil &mdash; Tekan tombol di bawah untuk memanggil.</p>
+                                </div>
+                            </div>
                         ) : (
                             <div className="text-center space-y-4">
                                 <div className="text-4xl font-bold text-gray-300">Belum Ada Antrean</div>
-                                <p className="text-muted-foreground">Klik &apos;Panggil Selanjutnya&apos; untuk memulai.</p>
+                                <p className="text-muted-foreground">Menunggu pelanggan mendaftar antrean.</p>
                             </div>
                         )}
 
