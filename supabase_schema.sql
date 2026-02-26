@@ -38,8 +38,9 @@ ALTER TABLE merchants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE counters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE queues ENABLE ROW LEVEL SECURITY;
 
--- Policies for Merchants (Pelaku usaha hanya bisa akses data miliknya)
+-- Policies for Merchants
 CREATE POLICY "Merchants can view own data" ON merchants FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Public can view merchant details" ON merchants FOR SELECT USING (true);
 CREATE POLICY "Merchants can update own data" ON merchants FOR UPDATE USING (auth.uid() = id);
 
 -- Policies for Counters

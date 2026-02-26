@@ -74,9 +74,9 @@ export default function CustomerCheckInPage() {
                 variant: 'destructive',
             })
         } else {
-            // Save queue ID to local storage to persist session
+            // Save queue ID to local storage (optional, for convenience)
             localStorage.setItem(`queue_${shopSlug}`, newQueue.id)
-            router.push(`/q/${shopSlug}/ticket`)
+            router.push(`/q/${shopSlug}/ticket/${newQueue.id}`)
         }
         setLoading(false)
     }

@@ -8,10 +8,12 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { supabase } from '@/lib/supabase'
 import { Bell, Clock, Info, Smartphone, Share2 } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export default function DigitalTicketPage() {
     const params = useParams()
     const shopSlug = params.slug as string
+    const queueIdFromUrl = params.id as string
     const [queue, setQueue] = useState<any>(null)
     const [merchant, setMerchant] = useState<any>(null)
     const [currentCalling, setCurrentCalling] = useState<number | null>(null)
@@ -20,6 +22,7 @@ export default function DigitalTicketPage() {
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const vibrateInterval = useRef<any>(null)
     const router = useRouter()
+    const { toast } = useToast()
 
     const fetchInitialData = async (queueId: string) => {
         const { data: qData } = await supabase
@@ -56,31 +59,31 @@ export default function DigitalTicketPage() {
             setCurrentCalling(currentCallee?.queue_number || 0)
             return qData.merchant_id
         }
+        return null
     }
 
     useEffect(() => {
-        const queueId = localStorage.getItem(`queue_${shopSlug}`)
-        if (!queueId) {
+        if (!queueIdFromUrl) {
             router.push(`/q/${shopSlug}`)
             return
         }
 
         let merchantId: string
 
-        fetchInitialData(queueId).then(id => {
+        fetchInitialData(queueIdFromUrl).then(id => {
             if (id) {
                 merchantId = id
 
                 // Realtime subscription
                 const channel = supabase
-                    .channel(`ticket-${queueId}`)
+                    .channel(`ticket-${queueIdFromUrl}`)
                     .on('postgres_changes', {
                         event: 'UPDATE',
                         schema: 'public',
                         table: 'queues',
                         filter: `merchant_id=eq.${id}`
                     }, (payload) => {
-                        if (payload.new.id === queueId) {
+                        if (payload.new.id === queueIdFromUrl) {
                             setQueue(payload.new)
                             if (payload.new.status === 'calling') {
                                 setIsAlarmPlaying(true)
@@ -97,10 +100,12 @@ export default function DigitalTicketPage() {
                 return () => {
                     supabase.removeChannel(channel)
                 }
+            } else {
+                router.push(`/q/${shopSlug}`)
             }
         })
 
-    }, [shopSlug])
+    }, [shopSlug, queueIdFromUrl])
 
     useEffect(() => {
         if (isAlarmPlaying && isAudioEnabled) {
@@ -148,6 +153,15 @@ export default function DigitalTicketPage() {
                 audioRef.current!.currentTime = 0
             }).catch(() => { })
         }
+    }
+
+    const handleShare = () => {
+        const url = window.location.href
+        navigator.clipboard.writeText(url)
+        toast({
+            title: "Link disalin!",
+            description: "Bagikan link ini ke orang lain untuk memantau antrean Anda.",
+        })
     }
 
     if (!queue || !merchant) return <div className="flex items-center justify-center min-h-screen">Loading tiket...</div>
@@ -255,7 +269,10 @@ export default function DigitalTicketPage() {
                 </Card>
 
                 <div className="flex justify-center gap-6 pt-4 text-muted-foreground">
-                    <button className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
+                    <button
+                        onClick={handleShare}
+                        className="flex flex-col items-center gap-1 hover:text-primary transition-colors"
+                    >
                         <Share2 size={24} />
                         <span className="text-[10px] font-bold">Bagikan</span>
                     </button>
