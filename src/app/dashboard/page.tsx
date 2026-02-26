@@ -178,7 +178,7 @@ export default function DashboardPage() {
                         ) : (
                             <div className="text-center space-y-4">
                                 <div className="text-4xl font-bold text-gray-300">Belum Ada Antrean</div>
-                                <p className="text-muted-foreground">Klik 'Panggil Selanjutnya' untuk memulai.</p>
+                                <p className="text-muted-foreground">Klik &apos;Panggil Selanjutnya&apos; untuk memulai.</p>
                             </div>
                         )}
 
