@@ -17,12 +17,37 @@ export default function DigitalTicketPage() {
     const [queue, setQueue] = useState<any>(null)
     const [merchant, setMerchant] = useState<any>(null)
     const [currentCalling, setCurrentCalling] = useState<number | null>(null)
+    const [waitingAhead, setWaitingAhead] = useState<number>(0)
     const [isAudioEnabled, setIsAudioEnabled] = useState(false)
     const [isAlarmPlaying, setIsAlarmPlaying] = useState(false)
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const vibrateInterval = useRef<any>(null)
     const router = useRouter()
     const { toast } = useToast()
+
+    const fetchPositionData = async (merchantId: string, myQueueNumber: number) => {
+        // 1. Get the latest called/serving/completed number as "Posisi Sekarang"
+        const { data: lastServed } = await supabase
+            .from('queues')
+            .select('queue_number')
+            .eq('merchant_id', merchantId)
+            .in('status', ['calling', 'serving', 'completed'])
+            .order('queue_number', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+        setCurrentCalling(lastServed?.queue_number || 0)
+
+        // 2. Count how many people with status 'waiting' have a lower queue_number
+        const { count } = await supabase
+            .from('queues')
+            .select('*', { count: 'exact', head: true })
+            .eq('merchant_id', merchantId)
+            .eq('status', 'waiting')
+            .lt('queue_number', myQueueNumber)
+
+        setWaitingAhead(count || 0)
+    }
 
     const fetchInitialData = async (queueId: string) => {
         const { data: qData } = await supabase
@@ -46,17 +71,9 @@ export default function DigitalTicketPage() {
                 setIsAlarmPlaying(true)
             }
 
-            // Fetch current calling
-            const { data: currentCallee } = await supabase
-                .from('queues')
-                .select('queue_number')
-                .eq('merchant_id', qData.merchant_id)
-                .eq('status', 'calling')
-                .order('called_at', { ascending: false })
-                .limit(1)
-                .maybeSingle()
+            // Fetch position data
+            await fetchPositionData(qData.merchant_id, qData.queue_number)
 
-            setCurrentCalling(currentCallee?.queue_number || 0)
             return qData.merchant_id
         }
         return null
@@ -78,22 +95,13 @@ export default function DigitalTicketPage() {
                 const channel = supabase
                     .channel(`ticket-${queueIdFromUrl}`)
                     .on('postgres_changes', {
-                        event: 'UPDATE',
+                        event: '*',
                         schema: 'public',
                         table: 'queues',
                         filter: `merchant_id=eq.${id}`
-                    }, (payload) => {
-                        if (payload.new.id === queueIdFromUrl) {
-                            setQueue(payload.new)
-                            if (payload.new.status === 'calling') {
-                                setIsAlarmPlaying(true)
-                            } else {
-                                stopAlarm()
-                            }
-                        }
-                        if (payload.new.status === 'calling') {
-                            setCurrentCalling(payload.new.queue_number)
-                        }
+                    }, () => {
+                        // Refetch all data on any queue change
+                        fetchInitialData(queueIdFromUrl)
                     })
                     .subscribe()
 
@@ -170,7 +178,7 @@ export default function DigitalTicketPage() {
     const isCompleted = queue.status === 'completed'
     const isSkipped = queue.status === 'skipped'
 
-    const peopleAhead = Math.max(0, queue.queue_number - (currentCalling || 0))
+    const peopleAhead = waitingAhead
     const progressPercent = currentCalling ? Math.min(100, (currentCalling / queue.queue_number) * 100) : 0
 
     return (
