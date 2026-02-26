@@ -179,6 +179,10 @@ export default function DigitalTicketPage() {
     const isSkipped = queue.status === 'skipped'
 
     const peopleAhead = waitingAhead
+    // Include the person currently being called/served in the wait estimation
+    const estimatedWait = (currentCalling && currentCalling < queue.queue_number)
+        ? (waitingAhead + 1) * (merchant.avg_service_time || 5)
+        : waitingAhead * (merchant.avg_service_time || 5)
     const progressPercent = currentCalling ? Math.min(100, (currentCalling / queue.queue_number) * 100) : 0
 
     return (
@@ -253,7 +257,7 @@ export default function DigitalTicketPage() {
                                 <div className="bg-gray-50 p-4 rounded-2xl flex flex-col items-center justify-center text-center space-y-1">
                                     <Clock size={20} className="text-primary" />
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase">Estimasi Tunggu</span>
-                                    <span className="font-bold">{isCompleted ? '0' : peopleAhead * (merchant.avg_service_time || 5)} Menit</span>
+                                    <span className="font-bold">{isCompleted ? '0' : estimatedWait} Menit</span>
                                 </div>
                                 <div className="bg-gray-50 p-4 rounded-2xl flex flex-col items-center justify-center text-center space-y-1">
                                     <Bell size={20} className={isAudioEnabled ? "text-primary" : "text-gray-400"} />
